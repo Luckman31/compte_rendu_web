@@ -1,14 +1,13 @@
 import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:share_plus/share_plus.dart';
+
 void main() {
   runApp(const CompteRenduApp());
 }
@@ -63,9 +62,11 @@ class _FormulairePageState extends State<FormulairePage> {
   @override
   void initState() {
     super.initState();
-    _ajouterTravail();
+    _ajouterTravail(); // au moins une ligne par défaut
+    _loadFromUrl();     // charge le formulaire depuis l'URL si présent
   }
 
+  // ===== Gestion des travaux =====
   void _ajouterTravail() {
     setState(() {
       travaux.add({
@@ -83,6 +84,7 @@ class _FormulairePageState extends State<FormulairePage> {
     });
   }
 
+  // ===== Gestion photos =====
   Future<void> choisirOuPrendrePhoto(bool avant) async {
     showModalBottomSheet(
       context: context,
@@ -100,11 +102,8 @@ class _FormulairePageState extends State<FormulairePage> {
                   if (image != null) {
                     final bytes = await image.readAsBytes();
                     setState(() {
-                      if (avant) {
-                        photosAvant.add(bytes);
-                      } else {
-                        photosApres.add(bytes);
-                      }
+                      if (avant) photosAvant.add(bytes);
+                      else photosApres.add(bytes);
                     });
                   }
                 },
@@ -119,11 +118,8 @@ class _FormulairePageState extends State<FormulairePage> {
                   if (image != null) {
                     final bytes = await image.readAsBytes();
                     setState(() {
-                      if (avant) {
-                        photosAvant.add(bytes);
-                      } else {
-                        photosApres.add(bytes);
-                      }
+                      if (avant) photosAvant.add(bytes);
+                      else photosApres.add(bytes);
                     });
                   }
                 },
@@ -135,6 +131,7 @@ class _FormulairePageState extends State<FormulairePage> {
     );
   }
 
+  // ===== Tableau infos =====
   Widget buildInfosTable() {
     final labels = [
       "Date d'intervention",
@@ -167,16 +164,16 @@ class _FormulairePageState extends State<FormulairePage> {
       },
       children: [
         for (int i = 0; i < 4; i++)
-        TableRow(children: [
-          buildLabelCell(labels[i]),
-          buildInputCell(controllers[i]),
-          buildLabelCell(labels[i + 4]),
-          buildInputCell(controllers[i + 4]),
-        ])
-    
+          TableRow(children: [
+            buildLabelCell(labels[i]),
+            buildInputCell(controllers[i]),
+            buildLabelCell(labels[i + 4]),
+            buildInputCell(controllers[i + 4]),
+          ])
       ],
     );
   }
+
   Widget buildLabelCell(String text) {
     return Container(
       height: 60,
@@ -186,6 +183,7 @@ class _FormulairePageState extends State<FormulairePage> {
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
     );
   }
+
   Widget buildInputCell(TextEditingController controller) {
     return Container(
       height: 60,
@@ -198,10 +196,11 @@ class _FormulairePageState extends State<FormulairePage> {
         expands: true,
         decoration: const InputDecoration(
           border: InputBorder.none,
-       ),
+        ),
       ),
     );
   }
+
   Widget buildPhotos(String titre, List<Uint8List> photos, bool avant) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,15 +245,14 @@ class _FormulairePageState extends State<FormulairePage> {
     );
   }
 
+  // ===== PDF =====
   Future<void> generatePdf() async {
     final pdf = pw.Document();
     final fontData = await rootBundle.load('assets/fonts/OpenSans-Regular.ttf');
     final ttf = pw.Font.ttf(fontData);
-    // Récupérer le logo
     final logoBytes = await rootBundle.load('assets/images/logoAgds.jpeg');
     final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
-    // Infos à passer au PDF
     final infos = {
       "Date d'intervention": dateController.text,
       "Type d'intervention": typeController.text,
@@ -278,6 +276,21 @@ class _FormulairePageState extends State<FormulairePage> {
       signature = await signatureController.toPngBytes();
     }
 
+// Dans le build du PDF
+    if (signature != null) {
+      pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            "Signature du client",
+            style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 5),
+          pw.Image(pw.MemoryImage(signature), width: 200, height: 100),
+        ],
+      );
+}
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -291,12 +304,11 @@ class _FormulairePageState extends State<FormulairePage> {
                 pw.SizedBox(width: 15),
                 pw.Text(
                   "Compte rendu d'intervention",
-                  style: pw.TextStyle(font:ttf, fontSize: 22, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(font: ttf, fontSize: 22, fontWeight: pw.FontWeight.bold),
                 ),
               ],
             ),
             pw.SizedBox(height: 20),
-
             // Tableau infos
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey),
@@ -307,7 +319,7 @@ class _FormulairePageState extends State<FormulairePage> {
                     pw.Container(
                       padding: const pw.EdgeInsets.all(8),
                       height: 25,
-                      child: pw.Text(e.key, style: pw.TextStyle(font: ttf,fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text(e.key, style: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold)),
                     ),
                     pw.Container(
                       color: PdfColors.white,
@@ -320,17 +332,14 @@ class _FormulairePageState extends State<FormulairePage> {
               }).toList(),
             ),
             pw.SizedBox(height: 20),
-
-            // Description
             pw.Text("Description du problème",
-                style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 5),
             pw.Text(descriptionController.text),
             pw.SizedBox(height: 20),
-
             // Pièces remplacées
             pw.Text("Pièces remplacées",
-                style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 5),
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey),
@@ -349,84 +358,137 @@ class _FormulairePageState extends State<FormulairePage> {
                   ],
                 ),
                 ...pieces.map((p) => pw.TableRow(
-                  children: [
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(p['Nom']!),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(p['Quantité']!),
-                    ),
-                  ],
-                )),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(p['Nom']!),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text(p['Quantité']!),
+                        ),
+                      ],
+                    )),
               ],
             ),
-            pw.SizedBox(height: 20),
-
-            // Photos
-            if (photosAvant.isNotEmpty)
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text("Photos AVANT", style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 5),
-                  pw.Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: photosAvant.map((p) => pw.Image(pw.MemoryImage(p), width: 120, height: 120, fit: pw.BoxFit.cover)).toList(),
-                  ),
-                ],
-              ),
-            pw.SizedBox(height: 20),
-            if (photosApres.isNotEmpty)
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text("Photos APRÈS", style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 5),
-                  pw.Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: photosApres.map((p) => pw.Image(pw.MemoryImage(p), width: 120, height: 120, fit: pw.BoxFit.cover)).toList(),
-                  ),
-                ],
-              ),
-            pw.SizedBox(height: 20),
-
-            // Signature
-            if (signature != null)
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text("Signature du client", style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 5),
-                  pw.Container(
-                    decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey)),
-                    height: 100,
-                    child: pw.Image(pw.MemoryImage(signature)),
-                  ),
-                ],
-              ),
           ];
         },
       ),
-    ); 
+    );
 
-    final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/compte_rendu_${DateTime.now().millisecondsSinceEpoch}.pdf';
-    final file = File(path);
-
-  // 2️⃣ Sauvegarder le PDF
+    // Sauvegarde PDF Web
     final pdfBytes = await pdf.save();
-    await file.writeAsBytes(pdfBytes);
+    final blob = html.Blob([pdfBytes], 'application/pdf');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download', 'compte_rendu.pdf')
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  }
 
-  // 3️⃣ Ouvrir le PDF
-    await OpenFilex.open(file.path);
+  // ===== Sauvegarde locale =====
+  void _saveForm() {
+    final data = {
+      'date': dateController.text,
+      'type': typeController.text,
+      'technicien': technicienController.text,
+      'contact': contactController.text,
+      'client': clientController.text,
+      'site': siteController.text,
+      'adresse': adresseController.text,
+      'coordonnees': coordonneesController.text,
+      'description': descriptionController.text,
+      'travaux': travaux.map((t) => {
+        'Nom': t['Nom']!.text,
+        'Quantité': t['Quantité']!.text,
+      }).toList(),
+    };
+    html.window.localStorage['compte_rendu'] = jsonEncode(data);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Modifications sauvegardées")));
+  }
 
-  
+  void _loadForm() {
+    final jsonStr = html.window.localStorage['compte_rendu'];
+    if (jsonStr == null) return;
+    final data = jsonDecode(jsonStr);
+    dateController.text = data['date'] ?? '';
+    typeController.text = data['type'] ?? '';
+    technicienController.text = data['technicien'] ?? '';
+    contactController.text = data['contact'] ?? '';
+    clientController.text = data['client'] ?? '';
+    siteController.text = data['site'] ?? '';
+    adresseController.text = data['adresse'] ?? '';
+    coordonneesController.text = data['coordonnees'] ?? '';
+    descriptionController.text = data['description'] ?? '';
+    travaux.clear();
+    for (var t in data['travaux']) {
+      final nom = TextEditingController(text: t['Nom']);
+      final qte = TextEditingController(text: t['Quantité']);
+      travaux.add({'Nom': nom, 'Quantité': qte});
     }
+    setState(() {});
+  }
 
+  // ===== Nouvelle fonctionnalité : partage via URL =====
+  void _generateLink() {
+    final data = {
+      'date': dateController.text,
+      'type': typeController.text,
+      'technicien': technicienController.text,
+      'contact': contactController.text,
+      'client': clientController.text,
+      'site': siteController.text,
+      'adresse': adresseController.text,
+      'coordonnees': coordonneesController.text,
+      'description': descriptionController.text,
+      'travaux': travaux.map((t) => {
+        'Nom': t['Nom']!.text,
+        'Quantité': t['Quantité']!.text,
+      }).toList(),
+    };
+
+    final jsonStr = jsonEncode(data);
+    final encoded = base64Url.encode(utf8.encode(jsonStr));
+
+    final url = '${html.window.location.origin}${html.window.location.pathname}?data=$encoded';
+
+    html.window.navigator.clipboard!.writeText(url);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lien copié dans le presse-papier")));
+  }
+
+  void _loadFromUrl() {
+    final uri = Uri.parse(html.window.location.href);
+    final encoded = uri.queryParameters['data'];
+    if (encoded == null) return;
+
+    try {
+      final jsonStr = utf8.decode(base64Url.decode(encoded));
+      final data = jsonDecode(jsonStr);
+
+      dateController.text = data['date'] ?? '';
+      typeController.text = data['type'] ?? '';
+      technicienController.text = data['technicien'] ?? '';
+      contactController.text = data['contact'] ?? '';
+      clientController.text = data['client'] ?? '';
+      siteController.text = data['site'] ?? '';
+      adresseController.text = data['adresse'] ?? '';
+      coordonneesController.text = data['coordonnees'] ?? '';
+      descriptionController.text = data['description'] ?? '';
+
+      travaux.clear();
+      for (var t in data['travaux']) {
+        travaux.add({
+          'Nom': TextEditingController(text: t['Nom']),
+          'Quantité': TextEditingController(text: t['Quantité']),
+        });
+      }
+      setState(() {});
+    } catch (e) {
+      print("Erreur lors du décodage de l'URL: $e");
+    }
+  }
+
+  // ===== Interface =====
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -505,13 +567,14 @@ class _FormulairePageState extends State<FormulairePage> {
               ),
             ),
             TextButton.icon(
-              onPressed: () {
-                signatureController.clear();
-              },
+              onPressed: () => signatureController.clear(),
               icon: const Icon(Icons.clear),
               label: const Text("Effacer la signature"),
             ),
             const SizedBox(height: 20),
+            ElevatedButton(onPressed: _saveForm, child: const Text("💾 Sauvegarder les modifications")),
+            ElevatedButton(onPressed: _loadForm, child: const Text("📂 Charger les modifications")),
+            ElevatedButton(onPressed: _generateLink, child: const Text("📎 Générer un lien pour partager")),
             ElevatedButton(
               onPressed: generatePdf,
               child: const Text("Générer le PDF"),
@@ -522,22 +585,5 @@ class _FormulairePageState extends State<FormulairePage> {
     );
   }
 
-  @override
-  void dispose() {
-    dateController.dispose();
-    typeController.dispose();
-    technicienController.dispose();
-    contactController.dispose();
-    clientController.dispose();
-    siteController.dispose();
-    adresseController.dispose();
-    coordonneesController.dispose();
-    descriptionController.dispose();
-    for (var t in travaux) {
-      t['Nom']!.dispose();
-      t['Quantité']!.dispose();
-    }
-    signatureController.dispose();
-    super.dispose();
-  }
+
 }
