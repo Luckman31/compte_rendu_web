@@ -340,11 +340,11 @@ class _FormulairePageState extends State<FormulairePage> {
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text("Nom", style: pw.TextStyle(font: ttf,fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text("Nom", style: pw.TextStyle(font: ttf)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text("Quantité", style: pw.TextStyle(font: ttf,fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text("Quantité", style: pw.TextStyle(font: ttf)),
                     ),
                   ],
                 ),
