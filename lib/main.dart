@@ -248,7 +248,8 @@ class _FormulairePageState extends State<FormulairePage> {
 
   Future<void> generatePdf() async {
     final pdf = pw.Document();
-
+    final fontData = await rootBundle.load('assets/fonts/OpenSans-Regular.ttf');
+    final ttf = pw.Font.ttf(fontData);
     // Récupérer le logo
     final logoBytes = await rootBundle.load('assets/images/logoAgds.jpeg');
     final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
@@ -290,7 +291,7 @@ class _FormulairePageState extends State<FormulairePage> {
                 pw.SizedBox(width: 15),
                 pw.Text(
                   "Compte rendu d'intervention",
-                  style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(font:ttf, fontSize: 22, fontWeight: pw.FontWeight.bold),
                 ),
               ],
             ),
@@ -306,7 +307,7 @@ class _FormulairePageState extends State<FormulairePage> {
                     pw.Container(
                       padding: const pw.EdgeInsets.all(8),
                       height: 25,
-                      child: pw.Text(e.key, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text(e.key, style: pw.TextStyle(font: ttf,fontWeight: pw.FontWeight.bold)),
                     ),
                     pw.Container(
                       color: PdfColors.white,
@@ -322,14 +323,14 @@ class _FormulairePageState extends State<FormulairePage> {
 
             // Description
             pw.Text("Description du problème",
-                style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 5),
             pw.Text(descriptionController.text),
             pw.SizedBox(height: 20),
 
             // Pièces remplacées
             pw.Text("Pièces remplacées",
-                style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 5),
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey),
@@ -339,11 +340,11 @@ class _FormulairePageState extends State<FormulairePage> {
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text("Nom", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text("Nom", style: pw.TextStyle(font: ttf,fontWeight: pw.FontWeight.bold)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text("Quantité", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text("Quantité", style: pw.TextStyle(font: ttf,fontWeight: pw.FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -368,7 +369,7 @@ class _FormulairePageState extends State<FormulairePage> {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text("Photos AVANT", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.Text("Photos AVANT", style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 5),
                   pw.Wrap(
                     spacing: 10,
@@ -382,7 +383,7 @@ class _FormulairePageState extends State<FormulairePage> {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text("Photos APRÈS", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.Text("Photos APRÈS", style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 5),
                   pw.Wrap(
                     spacing: 10,
@@ -398,7 +399,7 @@ class _FormulairePageState extends State<FormulairePage> {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text("Signature du client", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.Text("Signature du client", style: pw.TextStyle(font: ttf,fontSize: 16, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 5),
                   pw.Container(
                     decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey)),
