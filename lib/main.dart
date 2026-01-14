@@ -42,7 +42,9 @@ class _FormulairePageState extends State<FormulairePage> {
   final siteController = TextEditingController();
   final adresseController = TextEditingController();
   final coordonneesController = TextEditingController();
+  final compteRenduController = TextEditingController();
   final descriptionController = TextEditingController();
+  Uint8List? signatureFromLink;
 
   // Photos
   List<Uint8List> photosAvant = [];
@@ -271,25 +273,30 @@ class _FormulairePageState extends State<FormulairePage> {
             })
         .toList();
 
-    Uint8List? signature;
+    Uint8List? signature = signatureFromLink;
     if (signatureController.isNotEmpty) {
       signature = await signatureController.toPngBytes();
     }
 
 // Dans le build du PDF
-    if (signature != null) {
+    if (signature != null){
       pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
+          pw.SizedBox(height: 20),
           pw.Text(
             "Signature du client",
-            style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold),
+            style: pw.TextStyle(
+              font: ttf,
+              fontSize: 16,
+              fontWeight: pw.FontWeight.bold,
+            ),
           ),
           pw.SizedBox(height: 5),
           pw.Image(pw.MemoryImage(signature), width: 200, height: 100),
         ],
       );
-}
+    }
 
     pdf.addPage(
       pw.MultiPage(
@@ -318,14 +325,14 @@ class _FormulairePageState extends State<FormulairePage> {
                   children: [
                     pw.Container(
                       padding: const pw.EdgeInsets.all(8),
-                      height: 25,
-                      child: pw.Text(e.key, style: pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold)),
+                      
+                      child: pw.Text(e.key, style: pw.TextStyle(font: ttf)),
                     ),
                     pw.Container(
                       color: PdfColors.white,
                       padding: const pw.EdgeInsets.all(8),
-                      height: 25,
-                      child: pw.Text(e.value),
+                      
+                      child: pw.Text(e.value,style: pw.TextStyle(font: ttf)),
                     ),
                   ],
                 );
@@ -336,6 +343,13 @@ class _FormulairePageState extends State<FormulairePage> {
                 style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 5),
             pw.Text(descriptionController.text),
+            pw.SizedBox(height: 20),
+            pw.Text(
+              "Compte rendu du technicien",
+              style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 5),
+            pw.Text(compteRenduController.text),
             pw.SizedBox(height: 20),
             // Pièces remplacées
             pw.Text("Pièces remplacées",
@@ -371,6 +385,60 @@ class _FormulairePageState extends State<FormulairePage> {
                     )),
               ],
             ),
+          if (photosAvant.isNotEmpty) ...[
+            pw.SizedBox(height: 20),
+            pw.Text(
+              "Photos AVANT",
+              style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: photosAvant.map((img) {
+                return pw.Image(
+                  pw.MemoryImage(img),
+                  width: 150,
+                  height: 100,
+                  fit: pw.BoxFit.cover,
+                );
+              }).toList(),
+            ),
+          ],
+
+          if (photosApres.isNotEmpty) ...[
+            pw.SizedBox(height: 20),
+            pw.Text(
+              "Photos APRÈS",
+              style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 10),
+            pw.Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: photosApres.map((img) {
+                return pw.Image(
+                  pw.MemoryImage(img),
+                  width: 150,
+                  height: 100,
+                  fit: pw.BoxFit.cover,
+                );
+              }).toList(),
+            ),
+          ],
+          if (signature != null) ...[
+            pw.SizedBox(height: 20),
+            pw.Text(
+              "Signature du client",
+              style: pw.TextStyle(
+                font: ttf,
+                fontSize: 16,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 5),
+            pw.Image(pw.MemoryImage(signature), width: 200, height: 100),
+          ],  
           ];
         },
       ),
@@ -385,9 +453,8 @@ class _FormulairePageState extends State<FormulairePage> {
       ..click();
     html.Url.revokeObjectUrl(url);
   }
-
-  // ===== Sauvegarde locale =====
-  void _saveForm() {
+  
+  void _generateLink() async{
     final data = {
       'date': dateController.text,
       'type': typeController.text,
@@ -398,55 +465,18 @@ class _FormulairePageState extends State<FormulairePage> {
       'adresse': adresseController.text,
       'coordonnees': coordonneesController.text,
       'description': descriptionController.text,
+      'compteRendu': compteRenduController.text,
+      'photosAvant': photosAvant.map((p) => base64Encode(p)).toList(),
+      'photosApres': photosApres.map((p) => base64Encode(p)).toList(),
       'travaux': travaux.map((t) => {
         'Nom': t['Nom']!.text,
         'Quantité': t['Quantité']!.text,
       }).toList(),
     };
-    html.window.localStorage['compte_rendu'] = jsonEncode(data);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Modifications sauvegardées")));
-  }
-
-  void _loadForm() {
-    final jsonStr = html.window.localStorage['compte_rendu'];
-    if (jsonStr == null) return;
-    final data = jsonDecode(jsonStr);
-    dateController.text = data['date'] ?? '';
-    typeController.text = data['type'] ?? '';
-    technicienController.text = data['technicien'] ?? '';
-    contactController.text = data['contact'] ?? '';
-    clientController.text = data['client'] ?? '';
-    siteController.text = data['site'] ?? '';
-    adresseController.text = data['adresse'] ?? '';
-    coordonneesController.text = data['coordonnees'] ?? '';
-    descriptionController.text = data['description'] ?? '';
-    travaux.clear();
-    for (var t in data['travaux']) {
-      final nom = TextEditingController(text: t['Nom']);
-      final qte = TextEditingController(text: t['Quantité']);
-      travaux.add({'Nom': nom, 'Quantité': qte});
+    if (signatureController.isNotEmpty) {
+      final sig = await signatureController.toPngBytes();
+      data['signature'] = base64Encode(sig!);
     }
-    setState(() {});
-  }
-
-  // ===== Nouvelle fonctionnalité : partage via URL =====
-  void _generateLink() {
-    final data = {
-      'date': dateController.text,
-      'type': typeController.text,
-      'technicien': technicienController.text,
-      'contact': contactController.text,
-      'client': clientController.text,
-      'site': siteController.text,
-      'adresse': adresseController.text,
-      'coordonnees': coordonneesController.text,
-      'description': descriptionController.text,
-      'travaux': travaux.map((t) => {
-        'Nom': t['Nom']!.text,
-        'Quantité': t['Quantité']!.text,
-      }).toList(),
-    };
-
     final jsonStr = jsonEncode(data);
     final encoded = base64Url.encode(utf8.encode(jsonStr));
 
@@ -474,7 +504,14 @@ class _FormulairePageState extends State<FormulairePage> {
       adresseController.text = data['adresse'] ?? '';
       coordonneesController.text = data['coordonnees'] ?? '';
       descriptionController.text = data['description'] ?? '';
+      compteRenduController.text = data['compteRendu'] ?? '';
+      photosAvant = (data['photosAvant'] as List?)
+        ?.map((e) => base64Decode(e))
+        .toList() ?? [];
 
+      photosApres = (data['photosApres'] as List?)
+        ?.map((e) => base64Decode(e))
+        .toList() ?? [];
       travaux.clear();
       for (var t in data['travaux']) {
         travaux.add({
@@ -482,6 +519,12 @@ class _FormulairePageState extends State<FormulairePage> {
           'Quantité': TextEditingController(text: t['Quantité']),
         });
       }
+      if (data['signature'] != null) {
+        final bytes = base64Decode(data['signature']);
+      // tu peux au minimum la garder pour le PDF
+      // exemple: stocker dans une variable Uint8List signatureFromLink
+        signatureFromLink = bytes; // <-- ajoute cette variable en haut
+    }
       setState(() {});
     } catch (e) {
       print("Erreur lors du décodage de l'URL: $e");
@@ -507,6 +550,21 @@ class _FormulairePageState extends State<FormulairePage> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 hintText: "Entrez la description...",
+              ),
+
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Compte rendu du technicien",
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 5),
+            TextField(
+              controller: compteRenduController,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: "Entrez le compte rendu du technicien...",
               ),
             ),
             const SizedBox(height: 20),
@@ -572,8 +630,7 @@ class _FormulairePageState extends State<FormulairePage> {
               label: const Text("Effacer la signature"),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _saveForm, child: const Text("💾 Sauvegarder les modifications")),
-            ElevatedButton(onPressed: _loadForm, child: const Text("📂 Charger les modifications")),
+            
             ElevatedButton(onPressed: _generateLink, child: const Text("📎 Générer un lien pour partager")),
             ElevatedButton(
               onPressed: generatePdf,
